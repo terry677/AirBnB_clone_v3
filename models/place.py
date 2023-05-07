@@ -1,36 +1,37 @@
 #!/usr/bin/python3
-
-""" Place Module for HBNB project """
-
-
+""" holds class Place"""
+import models
 from models.base_model import BaseModel, Base
-from sqlalchemy import Column, String, Integer, Float, ForeignKey
-from sqlalchemy.sql.schema import Table
-from models.amenity import Amenity
+from os import getenv
+import sqlalchemy
+from sqlalchemy import Column, String, Integer, Float, ForeignKey, Table
 from sqlalchemy.orm import relationship
-from models import storage_t
 
-
-if storage_t == "db":
-    place_amenity = Table("place_amenity",
-                          Base.metadata,
-                          Column("place_id",
-                                 String(60),
-                                 ForeignKey("places.id"),
-                                 primary_key=True,
-                                 nullable=False),
-                          Column("amenity_id",
-                                 String(60),
-                                 ForeignKey("amenities.id"),
-                                 primary_key=True,
-                                 nullable=False))
+if models.storage_t == 'db':
+    place_amenity = Table(
+        'place_amenity',
+        Base.metadata,
+        Column(
+            'place_id',
+            String(60),
+            ForeignKey('places.id'),
+            nullable=False,
+            primary_key=True
+        ),
+        Column(
+            'amenity_id',
+            String(60),
+            ForeignKey('amenities.id'),
+            nullable=False,
+            primary_key=True
+        )
+    )
 
 
 class Place(BaseModel, Base):
-    """ A place to stay """
-
-    __tablename__ = 'places'
-    if storage_t == "db":
+    """Representation of Place """
+    if models.storage_t == 'db':
+        __tablename__ = 'places'
         city_id = Column(String(60), ForeignKey('cities.id'), nullable=False)
         user_id = Column(String(60), ForeignKey('users.id'), nullable=False)
         name = Column(String(128), nullable=False)
@@ -41,46 +42,57 @@ class Place(BaseModel, Base):
         price_by_night = Column(Integer, nullable=False, default=0)
         latitude = Column(Float, nullable=True)
         longitude = Column(Float, nullable=True)
-        reviews = relationship("Review", backref="place",
-                               cascade="all, delete, delete-orphan")
-        amenities = relationship("Amenity", backref="place_amenities",
-                                 secondary=place_amenity, viewonly=False)
+        reviews = relationship(
+            "Review",
+            cascade="all, delete, delete-orphan",
+            backref="place"
+        )
+        amenities = relationship("Amenity", secondary=place_amenity,
+                                 backref="place_amenities",
+                                 viewonly=False)
     else:
-        city_id = user_id = name = description = ""
-        number_rooms = number_bathrooms = max_guest = price_by_night = 0
-        latitude = longitude = 0.0
+        city_id = ""
+        user_id = ""
+        name = ""
+        description = ""
+        number_rooms = 0
+        number_bathrooms = 0
+        max_guest = 0
+        price_by_night = 0
+        latitude = 0.0
+        longitude = 0.0
         amenity_ids = []
 
+    def __init__(self, *args, **kwargs):
+        """initializes Place"""
+        super().__init__(*args, **kwargs)
+
+    if models.storage_t != 'db':
         @property
         def reviews(self):
-            """Returns list of `Review` instances with `place_id` == `Place.id`
-            """
+            """getter attribute returns the list of Review instances"""
             from models.review import Review
-            from models import storage
-
-            all_reviews = storage.all(Review)
-
-            return [rev_obj for rev_obj in all_reviews.values()
-                    if rev_obj.place_id == self.id]
+            review_list = []
+            all_reviews = models.storage.all(Review)
+            for review in all_reviews.values():
+                if review.place_id == self.id:
+                    review_list.append(review)
+            return review_list
 
         @property
         def amenities(self):
-            """Returns list of `Amenity` instances with `id` in `amenity_ids`
-            """
-            from models import storage
-
-            amenities = storage.all(Amenity)
-
-            return [amenity for amenity in amenities.values()
-                    if amenity.id in self.amenity_ids]
+            """getter attribute returns the list of Amenity instances"""
+            from models.amenity import Amenity
+            amenities_of_place = []
+            for value in models.storage.all(Amenity).values():
+                if value.id in self.amenity_ids:
+                    amenities_of_place.append(value)
+            return amenities_of_place
 
         @amenities.setter
-        def amenities(self, obj):
-            """Append amenity `id` to the list of amenity ids"""
-
-            if type(obj) != Amenity:
-                return
-
-            if obj.id not in self.amenity_ids:
-                self.amenity_ids.append(obj.id)
-                setattr(self, "amenity_ids", self.amenity_ids)
+        def amenities(self, value):
+            """Adds an amenity to this Place"""
+            from models.amenity import Amenity
+            if type(value) is Amenity:
+                if value.id not in self.amenity_ids:
+                    self.amenity_ids.append(value.id)

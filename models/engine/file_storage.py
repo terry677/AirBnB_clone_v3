@@ -34,6 +34,23 @@ class FileStorage:
             return new_dict
         return self.__objects
 
+    def get(self, cls, id):
+        """retrieves an object of a class with id"""
+        if cls is not None:
+            res = list(
+                filter(
+                    lambda x: type(x) is cls and x.id == id,
+                    self.__objects.values()
+                )
+            )
+            if res:
+                return res[0]
+        return None
+
+    def count(self, cls=None):
+        """retrieves the number of objects of a class or all (if cls==None)"""
+        return len(self.all(cls))
+
     def new(self, obj):
         """sets in __objects the obj with key <obj class name>.id"""
         if obj is not None:
@@ -44,9 +61,9 @@ class FileStorage:
         """serializes __objects to the JSON file (path: __file_path)"""
         json_objects = {}
         for key in self.__objects:
-            json_objects[key] = self.__objects[key].to_dict(save=True)
+            json_objects[key] = self.__objects[key].to_dict()
         with open(self.__file_path, 'w') as f:
-            json.dump(json_objects, f, indent=2)
+            json.dump(json_objects, f)
 
     def reload(self):
         """deserializes the JSON file to __objects"""
@@ -55,7 +72,7 @@ class FileStorage:
                 jo = json.load(f)
             for key in jo:
                 self.__objects[key] = classes[jo[key]["__class__"]](**jo[key])
-        except:
+        except Exception:
             pass
 
     def delete(self, obj=None):
@@ -68,33 +85,3 @@ class FileStorage:
     def close(self):
         """call reload() method for deserializing the JSON file to objects"""
         self.reload()
-
-    def get(self, cls, id):
-        """Rretrieves one object from the database
-        Args:
-            cls: class
-            id: string representing the object ID
-        Returns:
-            The object based on the class and ID passed,
-            otherwise, None
-        """
-
-        class_dict = self.all()
-        if cls in classes.values():
-            for obj in class_dict.values():
-                if obj.id == id:
-                    return obj
-
-    def count(self, cls=None):
-        """Counts the number of objects in storage
-        Args:
-            cls: the class of objects to count
-        Returns:
-            The number of objects of a specified class,
-            or the number of all the objects
-        """
-
-        if cls == None:
-            return len(self.all())
-        elif cls in classes.values():
-            return len(self.all(cls))

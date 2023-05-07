@@ -1,8 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """ holds class City"""
 import models
 from models.base_model import BaseModel, Base
-from models.place import Place
 from os import getenv
 import sqlalchemy
 from sqlalchemy import Column, String, ForeignKey
@@ -15,19 +14,14 @@ class City(BaseModel, Base):
         __tablename__ = 'cities'
         state_id = Column(String(60), ForeignKey('states.id'), nullable=False)
         name = Column(String(128), nullable=False)
-        places = relationship("Place", backref="cities")
+        places = relationship(
+            "Place",
+            cascade='all, delete, delete-orphan',
+            backref="cities"
+        )
     else:
         state_id = ""
         name = ""
-
-        @property
-        def places(self):
-            """Returns a list of places associated with a city"""
-
-            from models import storage
-
-            return [place for place in storage.all(Place).values()
-                    if place.city_id == self.id]
 
     def __init__(self, *args, **kwargs):
         """initializes city"""
